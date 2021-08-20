@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+if [ !  -n "$1" ]
+then
+  echo "error: Parameter project_name not found"
+  echo -e "Usage: project-create [PROJECT_NAME]"
+  exit 1
+fi
+
+projectGroup="$1"
+projectName="$1-html"
+projectPath="/var/www/$1/$projectName"
+
+if [ -e "$projectPath" ]
+then
+   echo "Project projectName already exists"
+   exit 1
+fi
+
+#create project dir
+mkdir -p $projectPath
+chmod 777 $projectPath
+
+#clone project
+cd $projectPath;
+git clone git@git.shogo.ru:shogo/argilla.git .
+
+#configure project
+configTemplate="protected/config/.env.example"
+configFile="protected/config/.env"
+salt=`echo -n $(($(date +%s%N)/1000000)) | md5sum | awk '{print $1}'`
+sed -e "s/project_name/$projectName/" -e "s/APP_DEBUG=false/APP_DEBUG=true/" -e "s/APP_ENV=prod/APP_ENV=dev/" -e "s/DB_HOST=localhost/DB_HOST=mysql/"  -e "s/APP_SALT=/APP_SALT=$salt/" $configTemplate > $configFile
+
+#createDBCommand="CREATE DATABASE \\`$projectName\\` CHARACTER SET utf8 COLLATE utf8_general_ci;"
+#GRANT ALL ON `$projectName`.* TO `username`@localhost IDENTIFIED BY 'password';
+#mysqlCommand="mysql -hmysql -uprog -p123 -e $createDBCommand"
+#echo $mysqlCommand
+
+cd /var/www/laradock
+#docker-compose exec --user=laradock workspace sh -c "mysql -hmysql -uprog -p123 -e 'CREATE DATABASE \`$projectName\` CHARACTER SET utf8 COLLATE utf8_general_ci;' && cd $projectPath && composer install && protected/yiic db applySchema && protected/yiic migrate up --interactive=0 && protected/yiic rbac reset"
+docker-compose exec --user=laradock workspace sh -c "mysql -hmysql -uprog -p123 -e 'CREATE DATABASE IF NOT EXISTS \`$projectName\` CHARACTER SET utf8 COLLATE utf8_general_ci;' && cd $projectPath && composer install && protected/yiic db bootstrap"
+
+nginx-add-project $projectGroup $projectName

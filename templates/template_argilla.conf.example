@@ -1,0 +1,46 @@
+server {
+
+    charset utf-8;
+    client_max_body_size 128M;
+    listen 80;
+
+    server_name project_name.dev2.shogo.ru project_name.dev2;
+    root        /var/www/project_group/project_name;
+    index       index.php;
+
+
+    access_log  /var/www/laradock/logs/nginx/project_name.access.log;
+    error_log   /var/www/laradock/logs/nginx/project_name.error.log warn;
+
+	  location ~ /(build\/|protected\/|\.) {
+		    deny all;
+	  }
+
+    location / {
+        # Перенаправляем все запросы к несуществующим директориям и файлам на index.php
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location /backend {
+        index index.php;
+        rewrite (.*) /backend/index.php last;
+    }
+
+    location ~ ^(/backend/index\.php|/index\.php) {
+        fastcgi_pass php-upstream;
+        fastcgi_index index.php;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /cmsmagazine(.*).txt {
+      access_log off;
+      error_page 404 = /index.php;
+    }
+
+    location ~* \.(jpg|jpeg|gif|png|ico|css|zip|tgz|gz|rar|bz2|doc|xml|xls|pdf|ppt|txt|tar|mid|midi|wav|bmp|rtf|js|cur|swf|woff|woff2|ttf|svg|mp4)$ {
+        try_files $uri =404;
+    }
+}
