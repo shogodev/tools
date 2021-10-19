@@ -2,13 +2,19 @@
 
 cd /var/www/laradock
 
+MY_IP=`myip`
+
 if [ -z "$1" ]
  then
   docker-compose exec --user=laradock workspace bash
 elif [ $1 = "-d" ]
  then
-  docker-compose exec --user=laradock -e REMOTE_ADDR="${SSH_CONNECTION%% *}" workspace bash
+  docker-compose exec --user=laradock -e REMOTE_ADDR="$MY_IP" -e XDEBUG_CONFIG="idekey=PHPSTORM" -e PHP_IDE_CONFIG="serverName=laradock" workspace bash
+elif [ $1 = "-c" ]
+ then
+  docker-compose exec --user=laradock workspace bash -c "$@"
 else 
   echo "Unknown parameter $1"
 fi
 
+ # docker-compose exec --user=laradock -e REMOTE_ADDR="${SSH_CONNECTION%% *}" workspace bash
